@@ -53,7 +53,8 @@ public class OrderManagement {
 
             for (Document product : products) {
                 String productName = product.getString("product_name");
-                double price = product.getDouble("price");
+                Number priceNumber = product.get("price", Number.class);
+                double price = priceNumber.doubleValue(); // Convert to double
                 int quantity = product.getInteger("quantity");
                 double total = price * quantity;
 
@@ -62,19 +63,28 @@ public class OrderManagement {
         }
     }
 
+
     public void calculateTotalAmount() {
         AggregateIterable<Document> result = orderCollection.aggregate(
                 Arrays.asList(
-                        new Document("$group", new Document("_id", null)
-                                .append("total", new Document("$sum", "$total_amount")))
+                        Aggregates.group(null, Accumulators.sum("total", "$total_amount"))
                 )
         );
 
         Document total = result.first();
         if (total != null) {
-            System.out.println("Total amount: " + total.getDouble("total"));
+            Object totalAmount = total.get("total");
+            double totalValue;
+            if (totalAmount instanceof Number) {
+                totalValue = ((Number) totalAmount).doubleValue();
+            } else {
+                System.out.println("Unexpected data type for total amount.");
+                return;
+            }
+            System.out.println("Total amount: " + totalValue);
         }
     }
+
 
     public void countProductById(String productId) {
         AggregateIterable<Document> result = orderCollection.aggregate(
